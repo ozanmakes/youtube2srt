@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 # Copyright (c) 2012, Ozan Sener
+# Contributor (c) 2016, Paulo Miguel Almeida Rodenas
 # All rights reserved.
 
 # Redistribution and use in source and binary forms, with or without
@@ -31,7 +32,7 @@ import urllib
 import urllib2
 import urlparse
 import httplib
-import logging
+from os.path import basename, splitext, isfile
 import codecs
 import argparse
 import sys
@@ -154,9 +155,9 @@ def convert_time(time):
 def main():
     parser = argparse.ArgumentParser(description="Download closed captions of \
                                      a YouTube video as a SRT file.")
-    parser.add_argument('url',
-                        metavar='VIDEO_URL',
-                        help="url of the YouTube video")
+    parser.add_argument('uri',
+                        metavar='VIDEO_URL_OR_FILENAME',
+                        help="YouTube video url or filename")
     parser.add_argument('-l', '--lang',
                         metavar='l1 [,l2...]', default='en',
                         help="comma separated list of two letter language \
@@ -165,29 +166,43 @@ def main():
                         help="write captions to FILE instead of video_id.srt")
     args = parser.parse_args()
 
-    queries = dict(urlparse.parse_qsl(urlparse.urlparse(args.url).query))
+    if args.uri.startswith('http'):
+        queries = dict(urlparse.parse_qsl(urlparse.urlparse(args.uri).query))
 
-    video_id = queries.get('v')
-    output = args.output or video_id
-    output = output if output.endswith('.srt') else output + '.srt'
-    lang = args.lang.split(',')
+        video_id = queries.get('v')
+        output = args.output or video_id
+        output = output if output.endswith('.srt') else output + '.srt'
+        lang = args.lang.split(',')
 
-    caption = retrieve_caption(video_id, lang)
+        caption = retrieve_caption(video_id, lang)
 
-    if caption:
-        save_srt(caption, output)
-        return
+        if caption:
+            save_srt(caption, output)
+            return
 
-    captions = get_track_list(video_id)
-    if captions:
-        print "Available languages:"
-        for lang in captions:
-            print "  %(code)s\t%(original)s (%(translated)s)" % \
-                {'code': lang,
-                 'original': captions[lang].lang_original,
-                 'translated': captions[lang].lang_translated}
+        captions = get_track_list(video_id)
+        if captions:
+            print "Available languages:"
+            for lang in captions:
+                print "  %(code)s\t%(original)s (%(translated)s)" % \
+                    {'code': lang,
+                     'original': captions[lang].lang_original,
+                     'translated': captions[lang].lang_translated}
+        else:
+            print "There are no subtitles available for this video: %s" % args.uri
     else:
-        print "There are no subtitles available for this video: %s" % args.url
+        if isfile(args.uri):
+            output = args.output or splitext(basename(args.uri))[0]
+            output = output if output.endswith('.srt') else output + '.srt'
+
+            track = parse_track(args.uri)
+            caption = convert_caption(track)
+
+            if caption:
+                save_srt(caption, output)
+                return
+        else:
+            print "There is no such file: %s" % args.uri
 
 if __name__ == '__main__':
     main()

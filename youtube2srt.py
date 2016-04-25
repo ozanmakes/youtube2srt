@@ -28,10 +28,17 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-import urllib
-import urllib2
-import urlparse
-import httplib
+try:
+    from urllib.parse import urlparse, urlencode, parse_qsl
+    from urllib.request import urlopen
+    from urllib.error import HTTPError, URLError
+    from http.client import HTTPException
+except ImportError:
+    from urlparse import urlparse, parse_qsl
+    from urllib import urlencode
+    from urllib2 import urlopen, HTTPError, URLError
+    from httplib import HTTPException
+
 from os.path import basename, splitext, isfile
 import codecs
 import argparse
@@ -74,26 +81,26 @@ def get_track(video_id, languages):
         return
 
     track = tracks[lang]
-    url = TRACK_URL % urllib.urlencode({'name': track.name, 'lang': lang,
+    url = TRACK_URL % urlencode({'name': track.name, 'lang': lang,
                                         'v': video_id})
-    track = urllib2.urlopen(url)
+    track = urlopen(url)
 
     return parse_track(track)
 
 
 def get_track_list(video_id):
     """Return the list of available captions for a given youtube video_id."""
-    url = LIST_URL % urllib.urlencode({'type': 'list', 'v': video_id})
+    url = LIST_URL % urlencode({'type': 'list', 'v': video_id})
     captions = {}
     try:
-        data = urllib2.urlopen(url)
+        data = urlopen(url)
         tree = ET.parse(data)
         for element in tree.iter('track'):
             lang = element.get('lang_code')
             fields = map(element.get, TRACK_KEYS.split())
             captions[lang] = Track(*fields)
-    except (urllib2.URLError, urllib2.HTTPError, httplib.HTTPException), err:
-        print "Network error: Unable to retrieve %s\n%s" % (url, err)
+    except (URLError, HTTPError, HTTPException) as err:
+        print("Network error: Unable to retrieve %s\n%s" % (url, err))
         sys.exit(6)
     return captions
 
@@ -167,7 +174,7 @@ def main():
     args = parser.parse_args()
 
     if args.uri.startswith('http'):
-        queries = dict(urlparse.parse_qsl(urlparse.urlparse(args.uri).query))
+        queries = dict(parse_qsl(urlparse(args.uri).query))
 
         video_id = queries.get('v')
         output = args.output or video_id
@@ -182,14 +189,14 @@ def main():
 
         captions = get_track_list(video_id)
         if captions:
-            print "Available languages:"
+            print("Available languages:")
             for lang in captions:
-                print "  %(code)s\t%(original)s (%(translated)s)" % \
+                print("  %(code)s\t%(original)s (%(translated)s)" % \
                     {'code': lang,
                      'original': captions[lang].lang_original,
-                     'translated': captions[lang].lang_translated}
+                     'translated': captions[lang].lang_translated})
         else:
-            print "There are no subtitles available for this video: %s" % args.uri
+            print("There are no subtitles available for this video: %s" % args.uri)
     else:
         if isfile(args.uri):
             output = args.output or splitext(basename(args.uri))[0]
@@ -202,7 +209,7 @@ def main():
                 save_srt(caption, output)
                 return
         else:
-            print "There is no such file: %s" % args.uri
+            print("There is no such file: %s" % args.uri)
 
 if __name__ == '__main__':
     main()

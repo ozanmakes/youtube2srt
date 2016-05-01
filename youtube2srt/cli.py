@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 # Copyright (c) 2012, Ozan Sener
 # Contributor (c) 2016, Paulo Miguel Almeida Rodenas
 # All rights reserved.

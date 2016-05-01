@@ -1,7 +1,7 @@
 ####
 youtube2srt
 ####
-youtube2srt 0.1
+youtube2srt 0.1.beta
 
 Released: 30-Apr-2016
 
